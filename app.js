@@ -205,15 +205,33 @@ document.addEventListener('keydown', e => {
 let voices = [];
 let selectedVoice = null;
 let autoSpeak = true;
+let ttsUnlocked = false;
+
+// Unlock audio on mobile devices on first touch
+document.addEventListener('touchstart', unlockTTS, { once: true, passive: true });
+document.addEventListener('click', unlockTTS, { once: true, passive: true });
+
+function unlockTTS() {
+  if (ttsUnlocked || !window.speechSynthesis) return;
+  const utt = new SpeechSynthesisUtterance('');
+  window.speechSynthesis.speak(utt);
+  ttsUnlocked = true;
+  // Try loading voices again after unlocking
+  setTimeout(loadVoices, 500);
+}
 
 function loadVoices() {
   voices = window.speechSynthesis.getVoices();
   const sel = document.getElementById('voice-select');
   const enVoices = voices.filter(v => v.lang.startsWith('en'));
+  
   if (!enVoices.length) {
-    sel.innerHTML = '<option value="">Trình duyệt không hỗ trợ giọng tiếng Anh</option>';
+    sel.innerHTML = '<option value="">Giọng Tiếng Anh (Hệ thống)</option>';
+    sel._voices = [];
+    selectedVoice = null;
     return;
   }
+  
   sel.innerHTML = '';
   const preferred = ['Google US English','Google UK English Female','Microsoft Zira','Microsoft David','Samantha','Karen','Daniel'];
   const sorted = [
@@ -234,7 +252,11 @@ function loadVoices() {
 
 function onVoiceChange() {
   const sel = document.getElementById('voice-select');
-  if (sel._voices) selectedVoice = sel._voices[parseInt(sel.value)];
+  if (sel._voices && sel._voices.length > 0) {
+    selectedVoice = sel._voices[parseInt(sel.value)];
+  } else {
+    selectedVoice = null;
+  }
 }
 
 function speak(text) {
